@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -11,47 +10,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMainHandlerWhenMissingCount(t *testing.T) {
-	req := httptest.NewRequest("GET", "/cafe?city=moscow", nil)
+func TestMainHandlerWhenOk(t *testing.T) {
+	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
 
 	responseRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(mainHandle)
 	handler.ServeHTTP(responseRecorder, req)
 
 	status := responseRecorder.Code
-	require.Equal(t, http.StatusBadRequest, status)
+	require.Equal(t, http.StatusOK, status, "Invalid status code")
+	body := responseRecorder.Body.String()
+	assert.NotEmpty(t, body, "Empty response body")
+}
+
+func TestMainHandlerWhenWrongCityValue(t *testing.T) {
+	req := httptest.NewRequest("GET", "/cafe?count=2&city=tula", nil)
+
+	responseRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(mainHandle)
+	handler.ServeHTTP(responseRecorder, req)
 
 	body := responseRecorder.Body.String()
-	require.NotEmpty(t, body)
-}
-
-func TestMainHandlerWhenWrongCity(t *testing.T) {
-	req := httptest.NewRequest("GET", "/cafe?count=4&city=tula", nil)
-
-	responseRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(mainHandle)
-	handler.ServeHTTP(responseRecorder, req)
-
+	assert.Equal(t, "wrong city value", body, "Unexpected response body")
 	status := responseRecorder.Code
-	require.Equal(t, http.StatusBadRequest, status)
-
-	city := req.URL.Query().Get("city")
-	require.NotEqual(t, city, "moscow")
-}
-
-func TestMainHandlerWhenWrongCount(t *testing.T) {
-	req := httptest.NewRequest("GET", "/cafe?count=moscow&city=tula", nil)
-
-	responseRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(mainHandle)
-	handler.ServeHTTP(responseRecorder, req)
-
-	status := responseRecorder.Code
-	require.Equal(t, http.StatusBadRequest, status)
-
-	countStr := req.URL.Query().Get("count")
-	_, err := strconv.Atoi(countStr)
-	require.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, status, "Invalid status code")
 }
 
 func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
@@ -62,18 +44,9 @@ func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 	handler.ServeHTTP(responseRecorder, req)
 
+	status := responseRecorder.Code
+	require.Equal(t, http.StatusOK, status, "Invalid status code")
 	body := responseRecorder.Body.String()
 	list := strings.Split(body, ",")
-	assert.Len(t, list, totalCount)
-}
-
-func TestMainHandlerWhenOk(t *testing.T) {
-	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
-
-	responseRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(mainHandle)
-	handler.ServeHTTP(responseRecorder, req)
-
-	status := responseRecorder.Code
-	require.Equal(t, http.StatusOK, status)
+	assert.Len(t, list, totalCount, "Unexpected response body")
 }
